@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PR2 Policy Graph &ndash; problem</title>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        #content {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 13px;
+            box-sizing: border-box;
+        }
+        #header {
+            margin-bottom: 13px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { margin: 0 0 8px 0; color: #333; font-size: 1.4em; }
+        .info-bar { font-size: 13px; color: #555; }
+        .stats {
+            display: flex; gap: 18px; margin-top: 10px; flex-wrap: wrap;
+        }
+        .stat {
+            background: #f0f4f8; padding: 8px 14px; border-radius: 4px; text-align: center;
+        }
+        .stat-label { font-size: 11px; color: #666; }
+        .stat-value { font-size: 18px; font-weight: bold; color: #333; }
+        .main {
+            display: flex; flex: 1; gap: 13px; min-height: 0;
+        }
+        #graph-wrap {
+            flex: 1;
+            border: 2px #555 dashed;
+            border-radius: 4px;
+            position: relative;
+            background: white;
+        }
+        #graph { width: 100%; height: 100%; }
+        #sidebar {
+            width: 360px; display: flex; flex-direction: column; gap: 13px;
+        }
+        #state {
+            background: white; border-radius: 8px; padding: 13px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex: 1;
+            overflow: auto; font-size: 13px; line-height: 1.35;
+        }
+        #state pre { margin: 0; white-space: pre-wrap; word-break: break-all; }
+        #state h4  { margin: 0 0 8px 0; color: #333; }
+        #state p { margin: 0 0 8px 0; }
+        .legend {
+            background: white; border-radius: 8px; padding: 13px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .legend-item {
+            display: flex; align-items: center; margin-bottom: 5px; font-size: 12px;
+        }
+        .legend-color {
+            display: inline-block; width: 14px; height: 14px;
+            border-radius: 50%; margin-right: 8px; flex-shrink: 0;
+        }
+        .controls {
+            background: white; border-radius: 8px; padding: 10px 13px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .controls label { font-size: 12px; margin-right: 15px; }
+        button {
+            background: #4A90E2; color: white; border: none;
+            padding: 5px 12px; border-radius: 4px; cursor: pointer;
+            font-size: 12px; margin-right: 5px;
+        }
+        button:hover { background: #357ABD; }
+        /* PRP-style graph elements */
+        .psnode { stroke: #000; stroke-width: 1.5px; cursor: pointer; }
+        .pslink {
+            fill: none; stroke: #000; stroke-width: 2.6px;
+            opacity: 0.8; marker-end: url(#end-arrow);
+        }
+        .pslabel { font-size: 16px; fill: #333; pointer-events: none; }
+        .runtime-note {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            z-index: 10;
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            border-radius: 4px;
+            padding: 8px 10px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="content">
+        <div id="header">
+            <h1>PR2 Policy Graph</h1>
+            <div class="info-bar">
+                <strong>Domain:</strong> domain &nbsp;|&nbsp;
+                <strong>Problem:</strong> problem
+            </div>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-label">Solved</div>
+                    <div class="stat-value">&#10003;</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Strong Cyclic</div>
+                    <div class="stat-value">&#10003;</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Policy States</div>
+                    <div class="stat-value">62</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Transitions</div>
+                    <div class="stat-value">66</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Mapped Outcomes</div>
+                    <div class="stat-value">66/66</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main">
+            <div id="graph-wrap">
+                <svg id="graph" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid meet"><g id="static-fallback-layer">
+<line x1="600.00" y1="717.78" x2="600.00" y2="730.00" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="426.67" y1="705.56" x2="600.00" y2="717.78" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="773.33" y1="705.56" x2="600.00" y2="717.78" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="426.67" y1="693.33" x2="426.67" y2="705.56" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="773.33" y1="693.33" x2="773.33" y2="705.56" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="426.67" y1="681.11" x2="426.67" y2="693.33" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="773.33" y1="681.11" x2="773.33" y2="693.33" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="426.67" y1="668.89" x2="426.67" y2="681.11" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="773.33" y1="668.89" x2="773.33" y2="681.11" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="426.67" y1="656.67" x2="426.67" y2="668.89" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="773.33" y1="656.67" x2="773.33" y2="668.89" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="644.44" x2="773.33" y2="656.67" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="644.44" x2="426.67" y2="656.67" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="632.22" x2="600.00" y2="644.44" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="620.00" x2="600.00" y2="632.22" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="607.78" x2="600.00" y2="620.00" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="595.56" x2="600.00" y2="607.78" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="583.33" x2="600.00" y2="595.56" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="571.11" x2="600.00" y2="583.33" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="558.89" x2="600.00" y2="571.11" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="546.67" x2="600.00" y2="558.89" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="534.44" x2="600.00" y2="546.67" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="522.22" x2="600.00" y2="534.44" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="510.00" x2="600.00" y2="522.22" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="497.78" x2="600.00" y2="510.00" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="485.56" x2="600.00" y2="497.78" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="473.33" x2="600.00" y2="485.56" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="426.67" y1="461.11" x2="600.00" y2="473.33" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="773.33" y1="461.11" x2="600.00" y2="473.33" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="426.67" y1="448.89" x2="426.67" y2="461.11" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="773.33" y1="448.89" x2="773.33" y2="461.11" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="426.67" y1="436.67" x2="426.67" y2="448.89" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="773.33" y1="436.67" x2="773.33" y2="448.89" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="426.67" y1="424.44" x2="426.67" y2="436.67" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="773.33" y1="424.44" x2="773.33" y2="436.67" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="412.22" x2="773.33" y2="424.44" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="412.22" x2="426.67" y2="424.44" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="400.00" x2="600.00" y2="412.22" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="387.78" x2="600.00" y2="400.00" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="375.56" x2="600.00" y2="387.78" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="363.33" x2="600.00" y2="375.56" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="351.11" x2="600.00" y2="363.33" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="338.89" x2="600.00" y2="351.11" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="326.67" x2="600.00" y2="338.89" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="314.44" x2="600.00" y2="326.67" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="302.22" x2="600.00" y2="314.44" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="290.00" x2="600.00" y2="302.22" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="277.78" x2="600.00" y2="290.00" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="265.56" x2="600.00" y2="277.78" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="253.33" x2="600.00" y2="265.56" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="241.11" x2="600.00" y2="253.33" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="241.11" x2="600.00" y2="241.11" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="228.89" x2="600.00" y2="241.11" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="216.67" x2="600.00" y2="228.89" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="204.44" x2="600.00" y2="216.67" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="192.22" x2="600.00" y2="204.44" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="180.00" x2="600.00" y2="192.22" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="167.78" x2="600.00" y2="180.00" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="155.56" x2="600.00" y2="167.78" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="155.56" x2="600.00" y2="155.56" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="143.33" x2="600.00" y2="155.56" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="131.11" x2="600.00" y2="143.33" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="118.89" x2="600.00" y2="131.11" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="106.67" x2="600.00" y2="118.89" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="94.44" x2="600.00" y2="106.67" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<line x1="600.00" y1="82.22" x2="600.00" y2="94.44" stroke="#222" stroke-opacity="0.65" stroke-width="1.5" />
+<g class="static-node">
+<circle cx="600.00" cy="717.78" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>release optimaunloadingsystem</title>
+<text x="612.00" y="721.78" font-size="16" fill="#333">release optimaunloadingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="426.67" cy="705.56" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>scrap optimaunloadingsystem</title>
+<text x="438.67" y="709.56" font-size="16" fill="#333">scrap optimaunloadingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="773.33" cy="705.56" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>unloading optimaunloadingsystem</title>
+<text x="785.33" y="709.56" font-size="16" fill="#333">unloading optimaunloadingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="426.67" cy="693.33" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>release planarshuttle3</title>
+<text x="438.67" y="697.33" font-size="16" fill="#333">release planarshuttle3</text>
+</g>
+<g class="static-node">
+<circle cx="773.33" cy="693.33" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>release planarshuttle3</title>
+<text x="785.33" y="697.33" font-size="16" fill="#333">release planarshuttle3</text>
+</g>
+<g class="static-node">
+<circle cx="426.67" cy="681.11" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>movetoposition planarshuttle3</title>
+<text x="438.67" y="685.11" font-size="16" fill="#333">movetoposition planarshuttle3</text>
+</g>
+<g class="static-node">
+<circle cx="773.33" cy="681.11" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>movetoposition planarshuttle3</title>
+<text x="785.33" y="685.11" font-size="16" fill="#333">movetoposition planarshuttle3</text>
+</g>
+<g class="static-node">
+<circle cx="426.67" cy="668.89" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>occupy optimaunloadingsystem</title>
+<text x="438.67" y="672.89" font-size="16" fill="#333">occupy optimaunloadingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="773.33" cy="668.89" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>occupy optimaunloadingsystem</title>
+<text x="785.33" y="672.89" font-size="16" fill="#333">occupy optimaunloadingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="426.67" cy="656.67" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>release omroncamerasystem</title>
+<text x="438.67" y="660.67" font-size="16" fill="#333">release omroncamerasystem</text>
+</g>
+<g class="static-node">
+<circle cx="773.33" cy="656.67" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>release omroncamerasystem</title>
+<text x="785.33" y="660.67" font-size="16" fill="#333">release omroncamerasystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="644.44" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>capture omroncamerasystem</title>
+<text x="612.00" y="648.44" font-size="16" fill="#333">capture omroncamerasystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="632.22" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>movetoposition planarshuttle3</title>
+<text x="612.00" y="636.22" font-size="16" fill="#333">movetoposition planarshuttle3</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="620.00" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>release syntegonstopperingsystem</title>
+<text x="612.00" y="624.00" font-size="16" fill="#333">release syntegonstopperingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="607.78" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>stoppering syntegonstopperingsystem</title>
+<text x="612.00" y="611.78" font-size="16" fill="#333">stoppering syntegonstopperingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="595.56" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>movetoposition planarshuttle3</title>
+<text x="612.00" y="599.56" font-size="16" fill="#333">movetoposition planarshuttle3</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="583.33" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>occupy syntegonstopperingsystem</title>
+<text x="612.00" y="587.33" font-size="16" fill="#333">occupy syntegonstopperingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="571.11" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>movetoposition planarshuttle3</title>
+<text x="612.00" y="575.11" font-size="16" fill="#333">movetoposition planarshuttle3</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="558.89" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>release imadispensingsystem</title>
+<text x="612.00" y="562.89" font-size="16" fill="#333">release imadispensingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="546.67" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>dispensing imadispensingsystem</title>
+<text x="612.00" y="550.67" font-size="16" fill="#333">dispensing imadispensingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="534.44" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>movetoposition planarshuttle3</title>
+<text x="612.00" y="538.44" font-size="16" fill="#333">movetoposition planarshuttle3</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="522.22" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>occupy imadispensingsystem</title>
+<text x="612.00" y="526.22" font-size="16" fill="#333">occupy imadispensingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="510.00" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>movetoposition planarshuttle3</title>
+<text x="612.00" y="514.00" font-size="16" fill="#333">movetoposition planarshuttle3</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="497.78" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>occupy planarshuttle3</title>
+<text x="612.00" y="501.78" font-size="16" fill="#333">occupy planarshuttle3</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="485.56" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>occupy omroncamerasystem</title>
+<text x="612.00" y="489.56" font-size="16" fill="#333">occupy omroncamerasystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="473.33" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>release optimaunloadingsystem</title>
+<text x="612.00" y="477.33" font-size="16" fill="#333">release optimaunloadingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="426.67" cy="461.11" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>scrap optimaunloadingsystem</title>
+<text x="438.67" y="465.11" font-size="16" fill="#333">scrap optimaunloadingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="773.33" cy="461.11" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>unloading optimaunloadingsystem</title>
+<text x="785.33" y="465.11" font-size="16" fill="#333">unloading optimaunloadingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="426.67" cy="448.89" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>release planarshuttle1</title>
+<text x="438.67" y="452.89" font-size="16" fill="#333">release planarshuttle1</text>
+</g>
+<g class="static-node">
+<circle cx="773.33" cy="448.89" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>release planarshuttle1</title>
+<text x="785.33" y="452.89" font-size="16" fill="#333">release planarshuttle1</text>
+</g>
+<g class="static-node">
+<circle cx="426.67" cy="436.67" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>movetoposition planarshuttle1</title>
+<text x="438.67" y="440.67" font-size="16" fill="#333">movetoposition planarshuttle1</text>
+</g>
+<g class="static-node">
+<circle cx="773.33" cy="436.67" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>movetoposition planarshuttle1</title>
+<text x="785.33" y="440.67" font-size="16" fill="#333">movetoposition planarshuttle1</text>
+</g>
+<g class="static-node">
+<circle cx="426.67" cy="424.44" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>release omroncamerasystem</title>
+<text x="438.67" y="428.44" font-size="16" fill="#333">release omroncamerasystem</text>
+</g>
+<g class="static-node">
+<circle cx="773.33" cy="424.44" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>release omroncamerasystem</title>
+<text x="785.33" y="428.44" font-size="16" fill="#333">release omroncamerasystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="412.22" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>capture omroncamerasystem</title>
+<text x="612.00" y="416.22" font-size="16" fill="#333">capture omroncamerasystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="400.00" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>movetoposition planarshuttle1</title>
+<text x="612.00" y="404.00" font-size="16" fill="#333">movetoposition planarshuttle1</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="387.78" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>occupy omroncamerasystem</title>
+<text x="612.00" y="391.78" font-size="16" fill="#333">occupy omroncamerasystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="375.56" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>movetoposition planarshuttle1</title>
+<text x="612.00" y="379.56" font-size="16" fill="#333">movetoposition planarshuttle1</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="363.33" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>release syntegonstopperingsystem</title>
+<text x="612.00" y="367.33" font-size="16" fill="#333">release syntegonstopperingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="351.11" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>stoppering syntegonstopperingsystem</title>
+<text x="612.00" y="355.11" font-size="16" fill="#333">stoppering syntegonstopperingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="338.89" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>movetoposition planarshuttle1</title>
+<text x="612.00" y="342.89" font-size="16" fill="#333">movetoposition planarshuttle1</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="326.67" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>occupy syntegonstopperingsystem</title>
+<text x="612.00" y="330.67" font-size="16" fill="#333">occupy syntegonstopperingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="314.44" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>movetoposition planarshuttle1</title>
+<text x="612.00" y="318.44" font-size="16" fill="#333">movetoposition planarshuttle1</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="302.22" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>release imadispensingsystem</title>
+<text x="612.00" y="306.22" font-size="16" fill="#333">release imadispensingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="290.00" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>dispensing imadispensingsystem</title>
+<text x="612.00" y="294.00" font-size="16" fill="#333">dispensing imadispensingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="277.78" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>movetoposition planarshuttle1</title>
+<text x="612.00" y="281.78" font-size="16" fill="#333">movetoposition planarshuttle1</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="265.56" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>occupy imadispensingsystem</title>
+<text x="612.00" y="269.56" font-size="16" fill="#333">occupy imadispensingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="253.33" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>release imaloadingsystem</title>
+<text x="612.00" y="257.33" font-size="16" fill="#333">release imaloadingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="241.11" r="8" fill="#025ef2" stroke="#000" stroke-width="1.2" />
+<title>loading imaloadingsystem</title>
+<text x="612.00" y="245.11" font-size="16" fill="#333">loading imaloadingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="228.89" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>occupy imaloadingsystem</title>
+<text x="612.00" y="232.89" font-size="16" fill="#333">occupy imaloadingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="216.67" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>movetoposition planarshuttle1</title>
+<text x="612.00" y="220.67" font-size="16" fill="#333">movetoposition planarshuttle1</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="204.44" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>release planarshuttle3</title>
+<text x="612.00" y="208.44" font-size="16" fill="#333">release planarshuttle3</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="192.22" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>movetoposition planarshuttle3</title>
+<text x="612.00" y="196.22" font-size="16" fill="#333">movetoposition planarshuttle3</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="180.00" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>occupy planarshuttle3</title>
+<text x="612.00" y="184.00" font-size="16" fill="#333">occupy planarshuttle3</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="167.78" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>release imaloadingsystem</title>
+<text x="612.00" y="171.78" font-size="16" fill="#333">release imaloadingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="155.56" r="8" fill="#025ef2" stroke="#000" stroke-width="1.2" />
+<title>loading imaloadingsystem</title>
+<text x="612.00" y="159.56" font-size="16" fill="#333">loading imaloadingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="143.33" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>occupy optimaunloadingsystem</title>
+<text x="612.00" y="147.33" font-size="16" fill="#333">occupy optimaunloadingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="131.11" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>occupy planarshuttle1</title>
+<text x="612.00" y="135.11" font-size="16" fill="#333">occupy planarshuttle1</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="118.89" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>occupy imaloadingsystem</title>
+<text x="612.00" y="122.89" font-size="16" fill="#333">occupy imaloadingsystem</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="106.67" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>release planarshuttle1</title>
+<text x="612.00" y="110.67" font-size="16" fill="#333">release planarshuttle1</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="94.44" r="8" fill="#828282" stroke="#000" stroke-width="1.2" />
+<title>movetoposition planarshuttle1</title>
+<text x="612.00" y="98.44" font-size="16" fill="#333">movetoposition planarshuttle1</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="82.22" r="8" fill="#067c00" stroke="#000" stroke-width="1.2" />
+<title>occupy planarshuttle1</title>
+<text x="612.00" y="86.22" font-size="16" fill="#333">occupy planarshuttle1</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="730.00" r="8" fill="#e8c100" stroke="#000" stroke-width="1.2" />
+<title>Goal</title>
+<text x="612.00" y="734.00" font-size="16" fill="#333">Goal</text>
+</g>
+<g class="static-node">
+<circle cx="600.00" cy="70.00" r="8" fill="#930000" stroke="#000" stroke-width="1.2" />
+<title>undefined</title>
+<text x="612.00" y="74.00" font-size="16" fill="#333">undefined</text>
+</g>
+</g></svg>
+            </div>
+            <div id="sidebar">
+                <div class="legend">
+                    <div class="legend-item"><span class="legend-color" style="background:#e8c100;"></span>Goal (distance 0)</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#067c00;"></span>Initial state</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#025ef2;"></span>On a cycle (recovery loop)</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#930000;"></span>Undefined / unmapped</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#828282;"></span>Default</div>
+                </div>
+                <div class="controls">
+                    <button onclick="resetLayout()">Reset Layout</button>
+                    <button onclick="zoomToFit()">Zoom to Fit</button><br><br>
+                    <label><input type="checkbox" id="show-labels" checked onchange="toggleLabels()"> Labels</label>
+                    <label>Charge: <input type="range" id="charge" min="0" max="400" value="120" oninput="updateCharge()"></label>
+                </div>
+                <div id="state">
+                    <h4>Partial State</h4>
+                    <pre>Hover over a node to inspect its state.</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script>
+    (function() {
+        const graphData = {"nodes": [{"id": 0, "name": "release optimaunloadingsystem", "type": "state", "distance": 1, "is_sc": false, "num_conditions": 13, "num_positive": 13, "num_negative": 0, "conditions": ["finished(mim8_0001)", "finished(mim8_0002)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "occupied(optimaunloadingsystem, mim8_0002)", "step_done(mim8_0001, step_3_inspection)", "step_done(mim8_0002, step_3_inspection)"], "actions": ["release_7(mim8_0002)"], "display_actions": ["release optimaunloadingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 1, "name": "scrap optimaunloadingsystem", "type": "state", "distance": 2, "is_sc": false, "num_conditions": 18, "num_positive": 14, "num_negative": 4, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(qualityok(mim8_0002))", "not(step_ready(mim8_0002, step_1_dispensing))", "not(step_ready(mim8_0002, step_2_stoppering))", "not(step_ready(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, unloadinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_done(mim8_0002, step_3_inspection)"], "actions": ["scrap(mim8_0002, planarshuttle3)"], "display_actions": ["scrap optimaunloadingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 2, "name": "unloading optimaunloadingsystem", "type": "state", "distance": 2, "is_sc": false, "num_conditions": 15, "num_positive": 15, "num_negative": 0, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "occupied(optimaunloadingsystem, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, unloadinglocation)", "qualityok(mim8_0002)", "step_done(mim8_0001, step_3_inspection)", "step_done(mim8_0002, step_3_inspection)"], "actions": ["unloading(mim8_0002, planarshuttle3)"], "display_actions": ["unloading optimaunloadingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 3, "name": "release planarshuttle3", "type": "state", "distance": 3, "is_sc": false, "num_conditions": 18, "num_positive": 14, "num_negative": 4, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(syntegonstopperingsystem)", "not(qualityok(mim8_0002))", "not(step_ready(mim8_0002, step_1_dispensing))", "not(step_ready(mim8_0002, step_2_stoppering))", "not(step_ready(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0002)", "occupied(planarshuttle3, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, unloadinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_done(mim8_0002, step_3_inspection)"], "actions": ["release_3(mim8_0002)"], "display_actions": ["release planarshuttle3"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 4, "name": "release planarshuttle3", "type": "state", "distance": 3, "is_sc": false, "num_conditions": 15, "num_positive": 15, "num_negative": 0, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(syntegonstopperingsystem)", "occupied(optimaunloadingsystem, mim8_0002)", "occupied(planarshuttle3, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, unloadinglocation)", "qualityok(mim8_0002)", "step_done(mim8_0001, step_3_inspection)", "step_done(mim8_0002, step_3_inspection)"], "actions": ["release_3(mim8_0002)"], "display_actions": ["release planarshuttle3"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 5, "name": "movetoposition planarshuttle3", "type": "state", "distance": 4, "is_sc": false, "num_conditions": 19, "num_positive": 15, "num_negative": 4, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(syntegonstopperingsystem)", "not(qualityok(mim8_0002))", "not(step_ready(mim8_0002, step_1_dispensing))", "not(step_ready(mim8_0002, step_2_stoppering))", "not(step_ready(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0002)", "occupied(planarshuttle3, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, capturelocation)", "resourceat(planarshuttle3, capturelocation)", "step_done(mim8_0001, step_3_inspection)", "step_done(mim8_0002, step_3_inspection)"], "actions": ["movetoposition_2(planarshuttle3, mim8_0002, capturelocation, unloadinglocation, optimaunloadingsystem)"], "display_actions": ["movetoposition planarshuttle3"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 6, "name": "movetoposition planarshuttle3", "type": "state", "distance": 4, "is_sc": false, "num_conditions": 16, "num_positive": 16, "num_negative": 0, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(syntegonstopperingsystem)", "occupied(optimaunloadingsystem, mim8_0002)", "occupied(planarshuttle3, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, capturelocation)", "qualityok(mim8_0002)", "resourceat(planarshuttle3, capturelocation)", "step_done(mim8_0001, step_3_inspection)", "step_done(mim8_0002, step_3_inspection)"], "actions": ["movetoposition_2(planarshuttle3, mim8_0002, capturelocation, unloadinglocation, optimaunloadingsystem)"], "display_actions": ["movetoposition planarshuttle3"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 7, "name": "occupy optimaunloadingsystem", "type": "state", "distance": 5, "is_sc": false, "num_conditions": 19, "num_positive": 15, "num_negative": 4, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(syntegonstopperingsystem)", "not(qualityok(mim8_0002))", "not(step_ready(mim8_0002, step_1_dispensing))", "not(step_ready(mim8_0002, step_2_stoppering))", "not(step_ready(mim8_0002, step_3_inspection))", "occupied(planarshuttle3, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, capturelocation)", "resourceat(planarshuttle3, capturelocation)", "step_done(mim8_0001, step_3_inspection)", "step_done(mim8_0002, step_3_inspection)"], "actions": ["occupy_7(mim8_0002)"], "display_actions": ["occupy optimaunloadingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 8, "name": "occupy optimaunloadingsystem", "type": "state", "distance": 5, "is_sc": false, "num_conditions": 16, "num_positive": 16, "num_negative": 0, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(syntegonstopperingsystem)", "occupied(planarshuttle3, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, capturelocation)", "qualityok(mim8_0002)", "resourceat(planarshuttle3, capturelocation)", "step_done(mim8_0001, step_3_inspection)", "step_done(mim8_0002, step_3_inspection)"], "actions": ["occupy_7(mim8_0002)"], "display_actions": ["occupy optimaunloadingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 9, "name": "release omroncamerasystem", "type": "state", "distance": 6, "is_sc": false, "num_conditions": 19, "num_positive": 15, "num_negative": 4, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(syntegonstopperingsystem)", "not(qualityok(mim8_0002))", "not(step_ready(mim8_0002, step_1_dispensing))", "not(step_ready(mim8_0002, step_2_stoppering))", "not(step_ready(mim8_0002, step_3_inspection))", "occupied(omroncamerasystem, mim8_0002)", "occupied(planarshuttle3, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, capturelocation)", "resourceat(planarshuttle3, capturelocation)", "step_done(mim8_0001, step_3_inspection)", "step_done(mim8_0002, step_3_inspection)"], "actions": ["release_8(mim8_0002)"], "display_actions": ["release omroncamerasystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 10, "name": "release omroncamerasystem", "type": "state", "distance": 6, "is_sc": false, "num_conditions": 16, "num_positive": 16, "num_negative": 0, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(syntegonstopperingsystem)", "occupied(omroncamerasystem, mim8_0002)", "occupied(planarshuttle3, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, capturelocation)", "qualityok(mim8_0002)", "resourceat(planarshuttle3, capturelocation)", "step_done(mim8_0001, step_3_inspection)", "step_done(mim8_0002, step_3_inspection)"], "actions": ["release_8(mim8_0002)"], "display_actions": ["release omroncamerasystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 11, "name": "capture omroncamerasystem", "type": "state", "distance": 7, "is_sc": false, "num_conditions": 16, "num_positive": 15, "num_negative": 1, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0002, step_3_inspection))", "occupied(omroncamerasystem, mim8_0002)", "occupied(planarshuttle3, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, capturelocation)", "resourceat(planarshuttle3, capturelocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_3_inspection)"], "actions": ["capture(mim8_0002, planarshuttle3)"], "display_actions": ["capture omroncamerasystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 12, "name": "movetoposition planarshuttle3", "type": "state", "distance": 8, "is_sc": false, "num_conditions": 16, "num_positive": 15, "num_negative": 1, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0002, step_3_inspection))", "occupied(omroncamerasystem, mim8_0002)", "occupied(planarshuttle3, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, stopperinglocation)", "resourceat(planarshuttle3, stopperinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_3_inspection)"], "actions": ["movetoposition_2(planarshuttle3, mim8_0002, stopperinglocation, capturelocation, omroncamerasystem)"], "display_actions": ["movetoposition planarshuttle3"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 13, "name": "release syntegonstopperingsystem", "type": "state", "distance": 9, "is_sc": false, "num_conditions": 16, "num_positive": 15, "num_negative": 1, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "not(step_done(mim8_0002, step_3_inspection))", "occupied(omroncamerasystem, mim8_0002)", "occupied(planarshuttle3, mim8_0002)", "occupied(syntegonstopperingsystem, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, stopperinglocation)", "resourceat(planarshuttle3, stopperinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_3_inspection)"], "actions": ["release_5(mim8_0002)"], "display_actions": ["release syntegonstopperingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 14, "name": "stoppering syntegonstopperingsystem", "type": "state", "distance": 10, "is_sc": false, "num_conditions": 17, "num_positive": 15, "num_negative": 2, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(omroncamerasystem, mim8_0002)", "occupied(planarshuttle3, mim8_0002)", "occupied(syntegonstopperingsystem, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, stopperinglocation)", "resourceat(planarshuttle3, stopperinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_2_stoppering)"], "actions": ["stoppering(mim8_0002, planarshuttle3)"], "display_actions": ["stoppering syntegonstopperingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 15, "name": "movetoposition planarshuttle3", "type": "state", "distance": 11, "is_sc": false, "num_conditions": 17, "num_positive": 15, "num_negative": 2, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(omroncamerasystem, mim8_0002)", "occupied(planarshuttle3, mim8_0002)", "occupied(syntegonstopperingsystem, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, capturelocation)", "resourceat(planarshuttle3, capturelocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_2_stoppering)"], "actions": ["movetoposition_2(planarshuttle3, mim8_0002, capturelocation, stopperinglocation, syntegonstopperingsystem)"], "display_actions": ["movetoposition planarshuttle3"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 16, "name": "occupy syntegonstopperingsystem", "type": "state", "distance": 12, "is_sc": false, "num_conditions": 17, "num_positive": 15, "num_negative": 2, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(omroncamerasystem, mim8_0002)", "occupied(planarshuttle3, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, capturelocation)", "resourceat(planarshuttle3, capturelocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_2_stoppering)"], "actions": ["occupy_5(mim8_0002)"], "display_actions": ["occupy syntegonstopperingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 17, "name": "movetoposition planarshuttle3", "type": "state", "distance": 13, "is_sc": false, "num_conditions": 17, "num_positive": 15, "num_negative": 2, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(omroncamerasystem, mim8_0002)", "occupied(planarshuttle3, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, dispensinglocation)", "resourceat(planarshuttle3, dispensinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_2_stoppering)"], "actions": ["movetoposition_2(planarshuttle3, mim8_0002, dispensinglocation, capturelocation, omroncamerasystem)"], "display_actions": ["movetoposition planarshuttle3"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 18, "name": "release imadispensingsystem", "type": "state", "distance": 14, "is_sc": false, "num_conditions": 17, "num_positive": 15, "num_negative": 2, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imaloadingsystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(imadispensingsystem, mim8_0002)", "occupied(omroncamerasystem, mim8_0002)", "occupied(planarshuttle3, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, dispensinglocation)", "resourceat(planarshuttle3, dispensinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_2_stoppering)"], "actions": ["release_4(mim8_0002)"], "display_actions": ["release imadispensingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 19, "name": "dispensing imadispensingsystem", "type": "state", "distance": 15, "is_sc": false, "num_conditions": 18, "num_positive": 15, "num_negative": 3, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imaloadingsystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(imadispensingsystem, mim8_0002)", "occupied(omroncamerasystem, mim8_0002)", "occupied(planarshuttle3, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, dispensinglocation)", "resourceat(planarshuttle3, dispensinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["dispensing(mim8_0002, planarshuttle3)"], "display_actions": ["dispensing imadispensingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 20, "name": "movetoposition planarshuttle3", "type": "state", "distance": 16, "is_sc": false, "num_conditions": 18, "num_positive": 15, "num_negative": 3, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imaloadingsystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(imadispensingsystem, mim8_0002)", "occupied(omroncamerasystem, mim8_0002)", "occupied(planarshuttle3, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, capturelocation)", "resourceat(planarshuttle3, capturelocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["movetoposition_2(planarshuttle3, mim8_0002, capturelocation, dispensinglocation, imadispensingsystem)"], "display_actions": ["movetoposition planarshuttle3"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 21, "name": "occupy imadispensingsystem", "type": "state", "distance": 17, "is_sc": false, "num_conditions": 18, "num_positive": 15, "num_negative": 3, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(omroncamerasystem, mim8_0002)", "occupied(planarshuttle3, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, capturelocation)", "resourceat(planarshuttle3, capturelocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["occupy_4(mim8_0002)"], "display_actions": ["occupy imadispensingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 22, "name": "movetoposition planarshuttle3", "type": "state", "distance": 18, "is_sc": false, "num_conditions": 18, "num_positive": 15, "num_negative": 3, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(omroncamerasystem, mim8_0002)", "occupied(planarshuttle3, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["movetoposition_2(planarshuttle3, mim8_0002, loadinglocation, capturelocation, omroncamerasystem)"], "display_actions": ["movetoposition planarshuttle3"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 23, "name": "occupy planarshuttle3", "type": "state", "distance": 19, "is_sc": false, "num_conditions": 18, "num_positive": 15, "num_negative": 3, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(omroncamerasystem, mim8_0002)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["occupy_3(mim8_0002)"], "display_actions": ["occupy planarshuttle3"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 24, "name": "occupy omroncamerasystem", "type": "state", "distance": 20, "is_sc": false, "num_conditions": 18, "num_positive": 15, "num_negative": 3, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["occupy_8(mim8_0002)"], "display_actions": ["occupy omroncamerasystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 25, "name": "release optimaunloadingsystem", "type": "state", "distance": 21, "is_sc": false, "num_conditions": 18, "num_positive": 15, "num_negative": 3, "conditions": ["finished(mim8_0001)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["release_7(mim8_0001)"], "display_actions": ["release optimaunloadingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 26, "name": "scrap optimaunloadingsystem", "type": "state", "distance": 22, "is_sc": false, "num_conditions": 23, "num_positive": 16, "num_negative": 7, "conditions": ["free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(qualityok(mim8_0001))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "not(step_ready(mim8_0001, step_1_dispensing))", "not(step_ready(mim8_0001, step_2_stoppering))", "not(step_ready(mim8_0001, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, unloadinglocation)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["scrap(mim8_0001, planarshuttle1)"], "display_actions": ["scrap optimaunloadingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 27, "name": "unloading optimaunloadingsystem", "type": "state", "distance": 22, "is_sc": false, "num_conditions": 20, "num_positive": 17, "num_negative": 3, "conditions": ["free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, unloadinglocation)", "productat(mim8_0002, loadinglocation)", "qualityok(mim8_0001)", "resourceat(planarshuttle3, loadinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["unloading(mim8_0001, planarshuttle1)"], "display_actions": ["unloading optimaunloadingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 28, "name": "release planarshuttle1", "type": "state", "distance": 23, "is_sc": false, "num_conditions": 23, "num_positive": 16, "num_negative": 7, "conditions": ["free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(qualityok(mim8_0001))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "not(step_ready(mim8_0001, step_1_dispensing))", "not(step_ready(mim8_0001, step_2_stoppering))", "not(step_ready(mim8_0001, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, unloadinglocation)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["release(mim8_0001)"], "display_actions": ["release planarshuttle1"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 29, "name": "release planarshuttle1", "type": "state", "distance": 23, "is_sc": false, "num_conditions": 20, "num_positive": 17, "num_negative": 3, "conditions": ["free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, unloadinglocation)", "productat(mim8_0002, loadinglocation)", "qualityok(mim8_0001)", "resourceat(planarshuttle3, loadinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["release(mim8_0001)"], "display_actions": ["release planarshuttle1"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 30, "name": "movetoposition planarshuttle1", "type": "state", "distance": 24, "is_sc": false, "num_conditions": 24, "num_positive": 17, "num_negative": 7, "conditions": ["free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(qualityok(mim8_0001))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "not(step_ready(mim8_0001, step_1_dispensing))", "not(step_ready(mim8_0001, step_2_stoppering))", "not(step_ready(mim8_0001, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, capturelocation)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle1, capturelocation)", "resourceat(planarshuttle3, loadinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["movetoposition_2(planarshuttle1, mim8_0001, capturelocation, unloadinglocation, optimaunloadingsystem)"], "display_actions": ["movetoposition planarshuttle1"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 31, "name": "movetoposition planarshuttle1", "type": "state", "distance": 24, "is_sc": false, "num_conditions": 21, "num_positive": 18, "num_negative": 3, "conditions": ["free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, capturelocation)", "productat(mim8_0002, loadinglocation)", "qualityok(mim8_0001)", "resourceat(planarshuttle1, capturelocation)", "resourceat(planarshuttle3, loadinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["movetoposition_2(planarshuttle1, mim8_0001, capturelocation, unloadinglocation, optimaunloadingsystem)"], "display_actions": ["movetoposition planarshuttle1"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 32, "name": "release omroncamerasystem", "type": "state", "distance": 25, "is_sc": false, "num_conditions": 24, "num_positive": 17, "num_negative": 7, "conditions": ["free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(qualityok(mim8_0001))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "not(step_ready(mim8_0001, step_1_dispensing))", "not(step_ready(mim8_0001, step_2_stoppering))", "not(step_ready(mim8_0001, step_3_inspection))", "occupied(omroncamerasystem, mim8_0001)", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, capturelocation)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle1, capturelocation)", "resourceat(planarshuttle3, loadinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["release_8(mim8_0001)"], "display_actions": ["release omroncamerasystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 33, "name": "release omroncamerasystem", "type": "state", "distance": 25, "is_sc": false, "num_conditions": 21, "num_positive": 18, "num_negative": 3, "conditions": ["free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(omroncamerasystem, mim8_0001)", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, capturelocation)", "productat(mim8_0002, loadinglocation)", "qualityok(mim8_0001)", "resourceat(planarshuttle1, capturelocation)", "resourceat(planarshuttle3, loadinglocation)", "step_done(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["release_8(mim8_0001)"], "display_actions": ["release omroncamerasystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 34, "name": "capture omroncamerasystem", "type": "state", "distance": 26, "is_sc": false, "num_conditions": 21, "num_positive": 17, "num_negative": 4, "conditions": ["free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(omroncamerasystem, mim8_0001)", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, capturelocation)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle1, capturelocation)", "resourceat(planarshuttle3, loadinglocation)", "step_ready(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["capture(mim8_0001, planarshuttle1)"], "display_actions": ["capture omroncamerasystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 35, "name": "movetoposition planarshuttle1", "type": "state", "distance": 27, "is_sc": false, "num_conditions": 21, "num_positive": 17, "num_negative": 4, "conditions": ["free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(omroncamerasystem, mim8_0001)", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, unloadinglocation)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle1, unloadinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_ready(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["movetoposition_2(planarshuttle1, mim8_0001, unloadinglocation, capturelocation, omroncamerasystem)"], "display_actions": ["movetoposition planarshuttle1"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 36, "name": "occupy omroncamerasystem", "type": "state", "distance": 28, "is_sc": false, "num_conditions": 21, "num_positive": 17, "num_negative": 4, "conditions": ["free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, unloadinglocation)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle1, unloadinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_ready(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["occupy_8(mim8_0001)"], "display_actions": ["occupy omroncamerasystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 37, "name": "movetoposition planarshuttle1", "type": "state", "distance": 29, "is_sc": false, "num_conditions": 21, "num_positive": 17, "num_negative": 4, "conditions": ["free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, stopperinglocation)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle1, stopperinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_ready(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["movetoposition_2(planarshuttle1, mim8_0001, stopperinglocation, unloadinglocation, optimaunloadingsystem)"], "display_actions": ["movetoposition planarshuttle1"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 38, "name": "release syntegonstopperingsystem", "type": "state", "distance": 30, "is_sc": false, "num_conditions": 21, "num_positive": 17, "num_negative": 4, "conditions": ["free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "occupied(syntegonstopperingsystem, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, stopperinglocation)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle1, stopperinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_ready(mim8_0001, step_3_inspection)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["release_5(mim8_0001)"], "display_actions": ["release syntegonstopperingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 39, "name": "stoppering syntegonstopperingsystem", "type": "state", "distance": 31, "is_sc": false, "num_conditions": 22, "num_positive": 17, "num_negative": 5, "conditions": ["free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "occupied(syntegonstopperingsystem, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, stopperinglocation)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle1, stopperinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_ready(mim8_0001, step_2_stoppering)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["stoppering(mim8_0001, planarshuttle1)"], "display_actions": ["stoppering syntegonstopperingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 40, "name": "movetoposition planarshuttle1", "type": "state", "distance": 32, "is_sc": false, "num_conditions": 22, "num_positive": 17, "num_negative": 5, "conditions": ["free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "occupied(syntegonstopperingsystem, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, unloadinglocation)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle1, unloadinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_ready(mim8_0001, step_2_stoppering)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["movetoposition_2(planarshuttle1, mim8_0001, unloadinglocation, stopperinglocation, syntegonstopperingsystem)"], "display_actions": ["movetoposition planarshuttle1"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 41, "name": "occupy syntegonstopperingsystem", "type": "state", "distance": 33, "is_sc": false, "num_conditions": 22, "num_positive": 17, "num_negative": 5, "conditions": ["free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, unloadinglocation)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle1, unloadinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_ready(mim8_0001, step_2_stoppering)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["occupy_5(mim8_0001)"], "display_actions": ["occupy syntegonstopperingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 42, "name": "movetoposition planarshuttle1", "type": "state", "distance": 34, "is_sc": false, "num_conditions": 22, "num_positive": 17, "num_negative": 5, "conditions": ["free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, dispensinglocation)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle1, dispensinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_ready(mim8_0001, step_2_stoppering)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["movetoposition_2(planarshuttle1, mim8_0001, dispensinglocation, unloadinglocation, optimaunloadingsystem)"], "display_actions": ["movetoposition planarshuttle1"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 43, "name": "release imadispensingsystem", "type": "state", "distance": 35, "is_sc": false, "num_conditions": 22, "num_positive": 17, "num_negative": 5, "conditions": ["free(cytivacappingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(imadispensingsystem, mim8_0001)", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, dispensinglocation)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle1, dispensinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_ready(mim8_0001, step_2_stoppering)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["release_4(mim8_0001)"], "display_actions": ["release imadispensingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 44, "name": "dispensing imadispensingsystem", "type": "state", "distance": 36, "is_sc": false, "num_conditions": 23, "num_positive": 17, "num_negative": 6, "conditions": ["free(cytivacappingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_1_dispensing))", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(imadispensingsystem, mim8_0001)", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, dispensinglocation)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle1, dispensinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_ready(mim8_0001, step_1_dispensing)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["dispensing(mim8_0001, planarshuttle1)"], "display_actions": ["dispensing imadispensingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 45, "name": "movetoposition planarshuttle1", "type": "state", "distance": 37, "is_sc": false, "num_conditions": 23, "num_positive": 17, "num_negative": 6, "conditions": ["free(cytivacappingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_1_dispensing))", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(imadispensingsystem, mim8_0001)", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, unloadinglocation)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle1, unloadinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_ready(mim8_0001, step_1_dispensing)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["movetoposition_2(planarshuttle1, mim8_0001, unloadinglocation, dispensinglocation, imadispensingsystem)"], "display_actions": ["movetoposition planarshuttle1"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 46, "name": "occupy imadispensingsystem", "type": "state", "distance": 38, "is_sc": false, "num_conditions": 23, "num_positive": 17, "num_negative": 6, "conditions": ["free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_1_dispensing))", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, unloadinglocation)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle1, unloadinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_ready(mim8_0001, step_1_dispensing)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["occupy_4(mim8_0001)"], "display_actions": ["occupy imadispensingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 47, "name": "release imaloadingsystem", "type": "state", "distance": 39, "is_sc": false, "num_conditions": 23, "num_positive": 17, "num_negative": 6, "conditions": ["free(cytivacappingsystem)", "free(imadispensingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_1_dispensing))", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(imaloadingsystem, mim8_0002)", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "on(mim8_0002, planarshuttle3)", "productat(mim8_0001, unloadinglocation)", "productat(mim8_0002, loadinglocation)", "resourceat(planarshuttle1, unloadinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_ready(mim8_0001, step_1_dispensing)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["release_6(mim8_0002)"], "display_actions": ["release imaloadingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 48, "name": "loading imaloadingsystem", "type": "state", "distance": 40, "is_sc": true, "num_conditions": 22, "num_positive": 16, "num_negative": 6, "conditions": ["empty(planarshuttle3)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_1_dispensing))", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(imaloadingsystem, mim8_0002)", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "productat(mim8_0001, unloadinglocation)", "resourceat(planarshuttle1, unloadinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_ready(mim8_0001, step_1_dispensing)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["loading(mim8_0002, planarshuttle3)"], "display_actions": ["loading imaloadingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 49, "name": "occupy imaloadingsystem", "type": "state", "distance": 41, "is_sc": false, "num_conditions": 22, "num_positive": 16, "num_negative": 6, "conditions": ["empty(planarshuttle3)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_1_dispensing))", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "productat(mim8_0001, unloadinglocation)", "resourceat(planarshuttle1, unloadinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_ready(mim8_0001, step_1_dispensing)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["occupy_6(mim8_0002)"], "display_actions": ["occupy imaloadingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 50, "name": "movetoposition planarshuttle1", "type": "state", "distance": 42, "is_sc": false, "num_conditions": 22, "num_positive": 16, "num_negative": 6, "conditions": ["empty(planarshuttle3)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_1_dispensing))", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "productat(mim8_0001, loadinglocation)", "resourceat(planarshuttle1, loadinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_ready(mim8_0001, step_1_dispensing)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["movetoposition_2(planarshuttle1, mim8_0001, loadinglocation, unloadinglocation, optimaunloadingsystem)"], "display_actions": ["movetoposition planarshuttle1"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 51, "name": "release planarshuttle3", "type": "state", "distance": 43, "is_sc": false, "num_conditions": 22, "num_positive": 16, "num_negative": 6, "conditions": ["empty(planarshuttle3)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_1_dispensing))", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "occupied(planarshuttle3, order_87054436_8b12_4b68_8e4f_c36326318b08)", "on(mim8_0001, planarshuttle1)", "productat(mim8_0001, loadinglocation)", "resourceat(planarshuttle1, loadinglocation)", "resourceat(planarshuttle3, loadinglocation)", "step_ready(mim8_0001, step_1_dispensing)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["release_3(order_87054436_8b12_4b68_8e4f_c36326318b08)"], "display_actions": ["release planarshuttle3"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 52, "name": "movetoposition planarshuttle3", "type": "state", "distance": 44, "is_sc": false, "num_conditions": 22, "num_positive": 16, "num_negative": 6, "conditions": ["empty(planarshuttle3)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_1_dispensing))", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "occupied(planarshuttle3, order_87054436_8b12_4b68_8e4f_c36326318b08)", "on(mim8_0001, planarshuttle1)", "productat(mim8_0001, loadinglocation)", "resourceat(planarshuttle1, loadinglocation)", "resourceat(planarshuttle3, initiallocation3)", "step_ready(mim8_0001, step_1_dispensing)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["movetoposition(planarshuttle3, order_87054436_8b12_4b68_8e4f_c36326318b08, initiallocation3, loadinglocation)"], "display_actions": ["movetoposition planarshuttle3"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 53, "name": "occupy planarshuttle3", "type": "state", "distance": 45, "is_sc": false, "num_conditions": 22, "num_positive": 16, "num_negative": 6, "conditions": ["empty(planarshuttle3)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_1_dispensing))", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "productat(mim8_0001, loadinglocation)", "resourceat(planarshuttle1, loadinglocation)", "resourceat(planarshuttle3, initiallocation3)", "step_ready(mim8_0001, step_1_dispensing)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["occupy_3(order_87054436_8b12_4b68_8e4f_c36326318b08)"], "display_actions": ["occupy planarshuttle3"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 54, "name": "release imaloadingsystem", "type": "state", "distance": 46, "is_sc": false, "num_conditions": 22, "num_positive": 16, "num_negative": 6, "conditions": ["empty(planarshuttle3)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_1_dispensing))", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(imaloadingsystem, mim8_0001)", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "on(mim8_0001, planarshuttle1)", "productat(mim8_0001, loadinglocation)", "resourceat(planarshuttle1, loadinglocation)", "resourceat(planarshuttle3, initiallocation3)", "step_ready(mim8_0001, step_1_dispensing)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["release_6(mim8_0001)"], "display_actions": ["release imaloadingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 55, "name": "loading imaloadingsystem", "type": "state", "distance": 47, "is_sc": true, "num_conditions": 21, "num_positive": 15, "num_negative": 6, "conditions": ["empty(planarshuttle1)", "empty(planarshuttle3)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(omroncamerasystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_1_dispensing))", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(imaloadingsystem, mim8_0001)", "occupied(optimaunloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "resourceat(planarshuttle1, loadinglocation)", "resourceat(planarshuttle3, initiallocation3)", "step_ready(mim8_0001, step_1_dispensing)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["loading(mim8_0001, planarshuttle1)"], "display_actions": ["loading imaloadingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 56, "name": "occupy optimaunloadingsystem", "type": "state", "distance": 48, "is_sc": false, "num_conditions": 21, "num_positive": 15, "num_negative": 6, "conditions": ["empty(planarshuttle1)", "empty(planarshuttle3)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(omroncamerasystem)", "free(optimaunloadingsystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_1_dispensing))", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(imaloadingsystem, mim8_0001)", "occupied(planarshuttle1, mim8_0001)", "resourceat(planarshuttle1, loadinglocation)", "resourceat(planarshuttle3, initiallocation3)", "step_ready(mim8_0001, step_1_dispensing)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["occupy_7(mim8_0001)"], "display_actions": ["occupy optimaunloadingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 57, "name": "occupy planarshuttle1", "type": "state", "distance": 49, "is_sc": false, "num_conditions": 21, "num_positive": 15, "num_negative": 6, "conditions": ["empty(planarshuttle1)", "empty(planarshuttle3)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(omroncamerasystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_1_dispensing))", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(imaloadingsystem, mim8_0001)", "resourceat(planarshuttle1, loadinglocation)", "resourceat(planarshuttle3, initiallocation3)", "step_ready(mim8_0001, step_1_dispensing)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["occupy(mim8_0001)"], "display_actions": ["occupy planarshuttle1"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 58, "name": "occupy imaloadingsystem", "type": "state", "distance": 50, "is_sc": false, "num_conditions": 21, "num_positive": 15, "num_negative": 6, "conditions": ["empty(planarshuttle1)", "empty(planarshuttle3)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_1_dispensing))", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "resourceat(planarshuttle1, loadinglocation)", "resourceat(planarshuttle3, initiallocation3)", "step_ready(mim8_0001, step_1_dispensing)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["occupy_6(mim8_0001)"], "display_actions": ["occupy imaloadingsystem"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 59, "name": "release planarshuttle1", "type": "state", "distance": 51, "is_sc": false, "num_conditions": 21, "num_positive": 15, "num_negative": 6, "conditions": ["empty(planarshuttle1)", "empty(planarshuttle3)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(optimaunloadingsystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_1_dispensing))", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(planarshuttle1, order_87054436_8b12_4b68_8e4f_c36326318b08)", "resourceat(planarshuttle1, loadinglocation)", "resourceat(planarshuttle3, initiallocation3)", "step_ready(mim8_0001, step_1_dispensing)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["release(order_87054436_8b12_4b68_8e4f_c36326318b08)"], "display_actions": ["release planarshuttle1"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 60, "name": "movetoposition planarshuttle1", "type": "state", "distance": 52, "is_sc": false, "num_conditions": 21, "num_positive": 15, "num_negative": 6, "conditions": ["empty(planarshuttle1)", "empty(planarshuttle3)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(optimaunloadingsystem)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_1_dispensing))", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "occupied(planarshuttle1, order_87054436_8b12_4b68_8e4f_c36326318b08)", "resourceat(planarshuttle1, initiallocation1)", "resourceat(planarshuttle3, initiallocation3)", "step_ready(mim8_0001, step_1_dispensing)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["movetoposition(planarshuttle1, order_87054436_8b12_4b68_8e4f_c36326318b08, initiallocation1, loadinglocation)"], "display_actions": ["movetoposition planarshuttle1"], "num_actions": 1, "is_initial": false, "size": 8}, {"id": 61, "name": "occupy planarshuttle1", "type": "state", "distance": 53, "is_sc": false, "num_conditions": 21, "num_positive": 15, "num_negative": 6, "conditions": ["empty(planarshuttle1)", "empty(planarshuttle3)", "free(cytivacappingsystem)", "free(imadispensingsystem)", "free(imaloadingsystem)", "free(omroncamerasystem)", "free(optimaunloadingsystem)", "free(planarshuttle1)", "free(planarshuttle2)", "free(planarshuttle3)", "free(syntegonstopperingsystem)", "not(step_done(mim8_0001, step_1_dispensing))", "not(step_done(mim8_0001, step_2_stoppering))", "not(step_done(mim8_0001, step_3_inspection))", "not(step_done(mim8_0002, step_1_dispensing))", "not(step_done(mim8_0002, step_2_stoppering))", "not(step_done(mim8_0002, step_3_inspection))", "resourceat(planarshuttle1, initiallocation1)", "resourceat(planarshuttle3, initiallocation3)", "step_ready(mim8_0001, step_1_dispensing)", "step_ready(mim8_0002, step_1_dispensing)"], "actions": ["occupy(order_87054436_8b12_4b68_8e4f_c36326318b08)"], "display_actions": ["occupy planarshuttle1"], "num_actions": 1, "is_initial": true, "size": 8}, {"id": 62, "name": "Goal", "type": "goal", "distance": 0, "is_sc": false, "num_conditions": 13, "num_positive": 13, "num_negative": 0, "conditions": [], "actions": [], "num_actions": 0, "is_initial": false, "size": 8}, {"id": 63, "name": "undefined", "type": "unmapped", "distance": -1, "is_sc": false, "num_conditions": 0, "num_positive": 0, "num_negative": 0, "conditions": [], "actions": [], "num_actions": 0, "is_initial": false, "size": 8}], "links": [{"source": 0, "target": 62, "action": "release_7(mim8_0002)", "type": "goal", "outcomes": [0], "value": 1}, {"source": 1, "target": 0, "action": "scrap(mim8_0002, planarshuttle3)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 2, "target": 0, "action": "unloading(mim8_0002, planarshuttle3)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 3, "target": 1, "action": "release_3(mim8_0002)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 4, "target": 2, "action": "release_3(mim8_0002)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 5, "target": 3, "action": "movetoposition_2(planarshuttle3, mim8_0002, capturelocation, unloadinglocation, optimaunloadingsystem)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 6, "target": 4, "action": "movetoposition_2(planarshuttle3, mim8_0002, capturelocation, unloadinglocation, optimaunloadingsystem)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 7, "target": 5, "action": "occupy_7(mim8_0002)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 8, "target": 6, "action": "occupy_7(mim8_0002)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 9, "target": 7, "action": "release_8(mim8_0002)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 10, "target": 8, "action": "release_8(mim8_0002)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 11, "target": 10, "action": "capture(mim8_0002, planarshuttle3)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 11, "target": 9, "action": "capture(mim8_0002, planarshuttle3)", "type": "transition", "outcomes": [1], "value": 1}, {"source": 12, "target": 11, "action": "movetoposition_2(planarshuttle3, mim8_0002, stopperinglocation, capturelocation, omroncamerasystem)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 13, "target": 12, "action": "release_5(mim8_0002)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 14, "target": 13, "action": "stoppering(mim8_0002, planarshuttle3)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 15, "target": 14, "action": "movetoposition_2(planarshuttle3, mim8_0002, capturelocation, stopperinglocation, syntegonstopperingsystem)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 16, "target": 15, "action": "occupy_5(mim8_0002)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 17, "target": 16, "action": "movetoposition_2(planarshuttle3, mim8_0002, dispensinglocation, capturelocation, omroncamerasystem)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 18, "target": 17, "action": "release_4(mim8_0002)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 19, "target": 18, "action": "dispensing(mim8_0002, planarshuttle3)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 20, "target": 19, "action": "movetoposition_2(planarshuttle3, mim8_0002, capturelocation, dispensinglocation, imadispensingsystem)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 21, "target": 20, "action": "occupy_4(mim8_0002)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 22, "target": 21, "action": "movetoposition_2(planarshuttle3, mim8_0002, loadinglocation, capturelocation, omroncamerasystem)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 23, "target": 22, "action": "occupy_3(mim8_0002)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 24, "target": 23, "action": "occupy_8(mim8_0002)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 25, "target": 24, "action": "release_7(mim8_0001)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 26, "target": 25, "action": "scrap(mim8_0001, planarshuttle1)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 27, "target": 25, "action": "unloading(mim8_0001, planarshuttle1)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 28, "target": 26, "action": "release(mim8_0001)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 29, "target": 27, "action": "release(mim8_0001)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 30, "target": 28, "action": "movetoposition_2(planarshuttle1, mim8_0001, capturelocation, unloadinglocation, optimaunloadingsystem)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 31, "target": 29, "action": "movetoposition_2(planarshuttle1, mim8_0001, capturelocation, unloadinglocation, optimaunloadingsystem)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 32, "target": 30, "action": "release_8(mim8_0001)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 33, "target": 31, "action": "release_8(mim8_0001)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 34, "target": 33, "action": "capture(mim8_0001, planarshuttle1)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 34, "target": 32, "action": "capture(mim8_0001, planarshuttle1)", "type": "transition", "outcomes": [1], "value": 1}, {"source": 35, "target": 34, "action": "movetoposition_2(planarshuttle1, mim8_0001, unloadinglocation, capturelocation, omroncamerasystem)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 36, "target": 35, "action": "occupy_8(mim8_0001)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 37, "target": 36, "action": "movetoposition_2(planarshuttle1, mim8_0001, stopperinglocation, unloadinglocation, optimaunloadingsystem)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 38, "target": 37, "action": "release_5(mim8_0001)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 39, "target": 38, "action": "stoppering(mim8_0001, planarshuttle1)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 40, "target": 39, "action": "movetoposition_2(planarshuttle1, mim8_0001, unloadinglocation, stopperinglocation, syntegonstopperingsystem)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 41, "target": 40, "action": "occupy_5(mim8_0001)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 42, "target": 41, "action": "movetoposition_2(planarshuttle1, mim8_0001, dispensinglocation, unloadinglocation, optimaunloadingsystem)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 43, "target": 42, "action": "release_4(mim8_0001)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 44, "target": 43, "action": "dispensing(mim8_0001, planarshuttle1)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 45, "target": 44, "action": "movetoposition_2(planarshuttle1, mim8_0001, unloadinglocation, dispensinglocation, imadispensingsystem)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 46, "target": 45, "action": "occupy_4(mim8_0001)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 47, "target": 46, "action": "release_6(mim8_0002)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 48, "target": 47, "action": "loading(mim8_0002, planarshuttle3)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 48, "target": 48, "action": "loading(mim8_0002, planarshuttle3)", "type": "transition", "outcomes": [1], "value": 1}, {"source": 49, "target": 48, "action": "occupy_6(mim8_0002)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 50, "target": 49, "action": "movetoposition_2(planarshuttle1, mim8_0001, loadinglocation, unloadinglocation, optimaunloadingsystem)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 51, "target": 50, "action": "release_3(order_87054436_8b12_4b68_8e4f_c36326318b08)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 52, "target": 51, "action": "movetoposition(planarshuttle3, order_87054436_8b12_4b68_8e4f_c36326318b08, initiallocation3, loadinglocation)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 53, "target": 52, "action": "occupy_3(order_87054436_8b12_4b68_8e4f_c36326318b08)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 54, "target": 53, "action": "release_6(mim8_0001)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 55, "target": 54, "action": "loading(mim8_0001, planarshuttle1)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 55, "target": 55, "action": "loading(mim8_0001, planarshuttle1)", "type": "transition", "outcomes": [1], "value": 1}, {"source": 56, "target": 55, "action": "occupy_7(mim8_0001)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 57, "target": 56, "action": "occupy(mim8_0001)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 58, "target": 57, "action": "occupy_6(mim8_0001)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 59, "target": 58, "action": "release(order_87054436_8b12_4b68_8e4f_c36326318b08)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 60, "target": 59, "action": "movetoposition(planarshuttle1, order_87054436_8b12_4b68_8e4f_c36326318b08, initiallocation1, loadinglocation)", "type": "transition", "outcomes": [0], "value": 1}, {"source": 61, "target": 60, "action": "occupy(order_87054436_8b12_4b68_8e4f_c36326318b08)", "type": "transition", "outcomes": [0], "value": 1}], "stats": {"solved": true, "strong_cyclic": true, "num_rules": 62, "num_fsaps": 0, "num_states": 62, "num_transitions": 66, "grounded_actions_found": 4709, "total_outcomes": 66, "mapped_outcomes": 66}};
+        const COLOR_GOAL  = "#e8c100";
+        const COLOR_INIT  = "#067c00";
+        const COLOR_SC    = "#025ef2";
+        const COLOR_UNDEF = "#930000";
+        const COLOR_DEF   = "#828282";
+
+        const svgEl  = document.getElementById("graph");
+        const width  = svgEl.clientWidth  || 900;
+        const height = svgEl.clientHeight || 700;
+        const nodeRadius = 8;
+
+        function escapeHtml(text) {
+            return String(text || "").replace(/[&<>"']/g, function(ch) {
+                if (ch === "&") return "&amp;";
+                if (ch === "<") return "&lt;";
+                if (ch === ">") return "&gt;";
+                if (ch === '"') return "&quot;";
+                return "&#39;";
+            });
+        }
+
+        function parseAction(action) {
+            const raw = String(action || "").trim();
+            if (!raw) {
+                return { name: "", params: [] };
+            }
+            if (raw.indexOf("(") >= 0 && raw.endsWith(")")) {
+                const i = raw.indexOf("(");
+                const name = raw.slice(0, i).trim();
+                const body = raw.slice(i + 1, -1).trim();
+                const params = body ? body.split(",").map(function(p) { return p.trim(); }).filter(Boolean) : [];
+                return { name: name, params: params };
+            }
+            const parts = raw.split(/\s+/).filter(Boolean);
+            return { name: parts[0] || "", params: parts.slice(1) };
+        }
+
+        function cleanActionName(name) {
+            return String(name || "")
+                .replace(/_\d+$/, "")
+                .replace(/_/g, " ")
+                .trim();
+        }
+
+        function formatActionName(action) {
+            const parsed = parseAction(action);
+            return cleanActionName(parsed.name) || "noop";
+        }
+
+        function formatActionParametersLine(action) {
+            const parsed = parseAction(action);
+            const base = cleanActionName(parsed.name) || "noop";
+            if (!parsed.params.length) {
+                return base + ": (none)";
+            }
+            return base + ": " + parsed.params.join(", ");
+        }
+
+        function nodeActionNames(node) {
+            if (node.display_actions && node.display_actions.length) {
+                return node.display_actions;
+            }
+            return (node.actions || []).map(formatActionName);
+        }
+
+        function buildStatePanelHtml(node) {
+            let html = "<h4>Partial State for Node " + node.id + "</h4>";
+            if (node.type === "goal") {
+                return html + "<pre>Goal node (distance 0)</pre>";
+            }
+            if (node.type === "unmapped") {
+                return html + "<pre>Undefined / unmapped successor</pre>";
+            }
+
+            const actionNames = nodeActionNames(node);
+            html += "<p><strong>Action:</strong> " + escapeHtml(actionNames.join(", ")) + "</p>";
+            html += "<p><strong>Distance to goal:</strong> " +
+                (node.distance >= 0 ? node.distance : "unreachable") + "</p>";
+            if (node.is_sc) html += "<p><strong>Strong-cyclic:</strong> Yes</p>";
+            if (node.is_initial) html += "<p><em>Initial state</em></p>";
+
+            const rawActions = node.actions || [];
+            const parameterLines = rawActions.map(function(action, idx) {
+                const display = actionNames[idx] || formatActionName(action);
+                return display + "  <-  " + formatActionParametersLine(action) +
+                    "  [raw: " + action + "]";
+            });
+            if (parameterLines.length) {
+                html += "<p><strong>Parameters:</strong></p><pre>" +
+                    escapeHtml(parameterLines.join("\n")) + "</pre>";
+            }
+
+            if (node.conditions && node.conditions.length) {
+                html += "<p><strong>Conditions:</strong></p><pre>" +
+                    escapeHtml(node.conditions.join("\n")) + "</pre>";
+                if (node.num_conditions > node.conditions.length) {
+                    html += "<p>... and " + (node.num_conditions - node.conditions.length) + " more</p>";
+                }
+            }
+
+            return html;
+        }
+
+        // Remove server-rendered fallback layer once interactive rendering starts.
+        while (svgEl.firstChild) {
+            svgEl.removeChild(svgEl.firstChild);
+        }
+
+        function colorForNode(d) {
+            if (d.type === "goal" || d.distance === 0) return COLOR_GOAL;
+            if (d.is_initial) return COLOR_INIT;
+            if (d.is_sc) return COLOR_SC;
+            if (d.type === "unmapped") return COLOR_UNDEF;
+            return COLOR_DEF;
+        }
+
+        function showRuntimeNote(msg) {
+            const wrap = document.getElementById("graph-wrap");
+            const note = document.createElement("div");
+            note.className = "runtime-note";
+            note.textContent = msg;
+            wrap.appendChild(note);
+        }
+
+        function renderStaticFallback() {
+            const NS = "http://www.w3.org/2000/svg";
+            while (svgEl.firstChild) {
+                svgEl.removeChild(svgEl.firstChild);
+            }
+            svgEl.setAttribute("width", width);
+            svgEl.setAttribute("height", height);
+
+            const statePanel = document.getElementById("state");
+            const labelsCheckbox = document.getElementById("show-labels");
+            const nodes = graphData.nodes || [];
+            const links = graphData.links || [];
+            const byId = {};
+
+            const maxDist = Math.max(1, ...nodes.map(function(n) { return n.distance >= 0 ? n.distance : 0; }));
+            const levels = {};
+
+            nodes.forEach(function(n) {
+                const level = n.distance >= 0 ? n.distance : (maxDist + 1);
+                if (!levels[level]) {
+                    levels[level] = [];
+                }
+                levels[level].push(n);
+            });
+
+            Object.keys(levels).forEach(function(levelKey) {
+                const level = Number(levelKey);
+                const arr = levels[level];
+                const y = 60 + ((maxDist + 1 - level) / (maxDist + 1)) * (height - 120);
+                arr.forEach(function(n, idx) {
+                    const x = 80 + ((idx + 1) / (arr.length + 1)) * (width - 160);
+                    n.x = x;
+                    n.y = y;
+                    byId[n.id] = n;
+                });
+            });
+
+            links.forEach(function(l) {
+                const s = byId[l.source];
+                const t = byId[l.target];
+                if (!s || !t) return;
+                const line = document.createElementNS(NS, "line");
+                line.setAttribute("x1", s.x);
+                line.setAttribute("y1", s.y);
+                line.setAttribute("x2", t.x);
+                line.setAttribute("y2", t.y);
+                line.setAttribute("stroke", "#000");
+                line.setAttribute("stroke-width", "1.5");
+                line.setAttribute("opacity", "0.6");
+                svgEl.appendChild(line);
+            });
+
+            nodes.forEach(function(n) {
+                const g = document.createElementNS(NS, "g");
+
+                const c = document.createElementNS(NS, "circle");
+                c.setAttribute("cx", n.x);
+                c.setAttribute("cy", n.y);
+                c.setAttribute("r", String(nodeRadius));
+                c.setAttribute("fill", colorForNode(n));
+                c.setAttribute("stroke", "#000");
+                c.setAttribute("stroke-width", "1.2");
+                c.style.cursor = "pointer";
+
+                const t = document.createElementNS(NS, "text");
+                t.setAttribute("x", n.x + 12);
+                t.setAttribute("y", n.y + 5);
+                t.setAttribute("class", "pslabel");
+                t.textContent = n.name || ("node-" + n.id);
+                t.setAttribute("font-size", "16");
+
+                c.addEventListener("mouseover", function() {
+                    statePanel.innerHTML = buildStatePanelHtml(n);
+                    c.setAttribute("r", String(nodeRadius * 1.8));
+                });
+                c.addEventListener("mouseout", function() {
+                    c.setAttribute("r", String(nodeRadius));
+                });
+
+                g.appendChild(c);
+                g.appendChild(t);
+                svgEl.appendChild(g);
+            });
+
+            window.resetLayout = function() {
+                renderStaticFallback();
+            };
+            window.zoomToFit = function() {};
+            window.updateCharge = function() {};
+            window.toggleLabels = function() {
+                const show = labelsCheckbox.checked;
+                const display = show ? "block" : "none";
+                Array.prototype.forEach.call(document.querySelectorAll(".pslabel"), function(el) {
+                    el.style.display = display;
+                });
+            };
+        }
+
+        if (typeof window.d3 === "undefined") {
+            showRuntimeNote("D3 could not be loaded (offline/CSP). Showing static fallback view.");
+            renderStaticFallback();
+            return;
+        }
+
+        const svg = d3.select("#graph")
+                      .attr("width", width)
+                      .attr("height", height);
+        const container = svg.append("g");
+
+        /* Zoom / pan */
+        const zoomBehavior = d3.zoom()
+            .scaleExtent([0.1, 6])
+            .on("zoom", function() {
+                container.attr("transform", d3.event.transform);
+            });
+        svg.call(zoomBehavior);
+
+        /* Arrow marker (PRP style) */
+        svg.append("svg:defs").append("svg:marker")
+            .attr("id", "end-arrow")
+            .attr("viewBox", "0 -5 10 10")
+            .attr("refX", 6)
+            .attr("markerWidth", 3)
+            .attr("markerHeight", 3)
+            .attr("orient", "auto")
+          .append("svg:path")
+            .attr("d", "M0,-5L10,0L0,5")
+            .attr("fill", "#000");
+
+        /* Initial positions: top-to-bottom flow (init=top, goal=bottom) */
+        const maxDist = Math.max(1, ...graphData.nodes.map(
+            function(n) { return n.distance >= 0 ? n.distance : 0; }
+        ));
+        const vPad = 60, hPad = 80;
+
+        function jitter(id) {
+            var x = Math.sin((id + 1) * 12.9898) * 43758.5453;
+            return x - Math.floor(x);
+        }
+
+        graphData.nodes.forEach(function(d) {
+            if (d.distance >= 0) {
+                /* Higher distance = closer to init (top). */
+                var ratio = 1.0 - d.distance / (maxDist + 1);
+                d.y = vPad + ratio * (height - 2 * vPad);
+            } else {
+                d.y = height - vPad;
+            }
+            d.x = hPad + jitter(d.id) * (width - 2 * hPad);
+        });
+
+        /* Force simulation (vertical flow akin to PRP's WebCola flowLayout) */
+        const simulation = d3.forceSimulation(graphData.nodes)
+            .force("link", d3.forceLink(graphData.links)
+                .id(function(d) { return d.id; })
+                .distance(84)
+                .strength(0.5))
+            .force("charge", d3.forceManyBody().strength(-120))
+            .force("y", d3.forceY(function(d) {
+                if (d.type === "goal") return height - vPad;
+                if (d.is_initial)     return vPad;
+                if (d.distance >= 0) {
+                    var ratio = 1.0 - d.distance / (maxDist + 1);
+                    return vPad + ratio * (height - 2 * vPad);
+                }
+                return height - vPad;
+            }).strength(0.12))
+            .force("x", d3.forceX(width / 2).strength(0.03))
+            .force("collision", d3.forceCollide(nodeRadius + 4));
+
+        /* Edges (PRP: black, 2.6px, 0.8 opacity, arrow marker) */
+        const path = container.selectAll(".pslink")
+            .data(graphData.links)
+            .enter().append("svg:path")
+            .attr("class", "pslink");
+
+        /* Nodes (PRP colour scheme) */
+        const node = container.selectAll(".psnode")
+            .data(graphData.nodes)
+            .enter().append("circle")
+            .attr("class", "psnode")
+            .attr("id", function(d) { return "psnode" + d.id; })
+            .attr("r", nodeRadius)
+            .style("fill", function(d) {
+                return colorForNode(d);
+            })
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+
+        /* Labels ("action (distance)" beside each node) */
+        const label = container.selectAll(".pslabel")
+            .data(graphData.nodes)
+            .enter().append("text")
+            .attr("class", "pslabel")
+            .attr("dx", 12)
+            .attr("dy", ".35em")
+            .text(function(d) { return d.name; });
+
+        /* Hover: show partial state in side panel (PRP style) */
+        node.on("mouseover", function(d) {
+                document.getElementById("state").innerHTML = buildStatePanelHtml(d);
+                d3.select(this).transition().duration(200).attr("r", nodeRadius * 2);
+            })
+            .on("mouseout", function(d) {
+                d3.select(this).transition().duration(200).attr("r", nodeRadius);
+            })
+            .on("dblclick", function(d) {
+                console.log("Node Info:", d);
+            });
+
+        /* Tick (PRP-style edge routing) */
+        simulation.on("tick", function() {
+            path.attr("d", function(d) {
+                /* Self-loop: draw a small arc looping above the node so the
+                 * transition is visible (otherwise the path collapses to a
+                 * zero-length segment and the edge disappears). */
+                if (d.source === d.target || d.source.id === d.target.id) {
+                    var cx = d.source.x,
+                        cy = d.source.y,
+                        r  = nodeRadius,
+                        loopR = nodeRadius * 1.6,
+                        x1 = cx - r * 0.5,
+                        y1 = cy - r * 0.87,
+                        x2 = cx + r * 0.5,
+                        y2 = cy - r * 0.87;
+                    return "M" + x1 + "," + y1 +
+                           "A" + loopR + "," + loopR + " 0 1,1 " +
+                           x2 + "," + y2;
+                }
+                var dx = d.target.x - d.source.x,
+                    dy = d.target.y - d.source.y,
+                    dist = Math.sqrt(dx * dx + dy * dy) || 1,
+                    nx = dx / dist, ny = dy / dist,
+                    sx = d.source.x + nodeRadius * nx,
+                    sy = d.source.y + nodeRadius * ny,
+                    tx = d.target.x - (nodeRadius + 2) * nx,
+                    ty = d.target.y - (nodeRadius + 2) * ny;
+                return "M" + sx + "," + sy + "L" + tx + "," + ty;
+            });
+            node.attr("cx", function(d) { return d.x; })
+                .attr("cy", function(d) { return d.y; });
+            label.attr("x", function(d) { return d.x; })
+                 .attr("y", function(d) { return d.y; });
+        });
+
+        /* Drag handlers */
+        function dragstarted(d) {
+            if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x; d.fy = d.y;
+        }
+        function dragged(d) { d.fx = d3.event.x; d.fy = d3.event.y; }
+        function dragended(d) {
+            if (!d3.event.active) simulation.alphaTarget(0);
+            d.fx = null; d.fy = null;
+        }
+
+        /* Controls */
+        window.resetLayout = function() { simulation.alpha(1).restart(); };
+
+        window.zoomToFit = function() {
+            var bounds = container.node().getBBox();
+            if (!bounds.width || !bounds.height) return;
+            var wR = width / bounds.width,
+                hR = height / bounds.height,
+                sc = 0.85 * Math.min(wR, hR),
+                tx = width  / 2 - sc * (bounds.x + bounds.width  / 2),
+                ty = height / 2 - sc * (bounds.y + bounds.height / 2);
+            svg.transition().duration(600)
+               .call(zoomBehavior.transform,
+                     d3.zoomIdentity.translate(tx, ty).scale(sc));
+        };
+
+        window.toggleLabels = function() {
+            var show = document.getElementById("show-labels").checked;
+            label.style("display", show ? "block" : "none");
+        };
+
+        window.updateCharge = function() {
+            simulation.force("charge").strength(
+                -document.getElementById("charge").value);
+            simulation.alpha(0.3).restart();
+        };
+
+        setTimeout(window.zoomToFit, 300);
+    })();
+    </script>
+</body>
+</html>

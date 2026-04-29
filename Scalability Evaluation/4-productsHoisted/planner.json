@@ -1,0 +1,17 @@
+{
+  "bt_nodes_hoisted": 1115,
+  "bt_nodes_trivial": 4443,
+  "bt_synthesis_time_s": 0.3289828459965065,
+  "build_time_s": 1.8581547069479711,
+  "end_to_end_planning_s": 36.83390471700113,
+  "order_aas_id": "https://smartproductionlab.aau.dk/aas/MIM8AAS",
+  "parse_time_s": 0.006362383021041751,
+  "pipeline_total_time_s": 33.54460683197249,
+  "plan_action_count": 0,
+  "planning_source_count": 14,
+  "planning_time_s": 28.28593291901052,
+  "policy_rule_count": 124,
+  "resolved_asset_count": 16,
+  "run_id": "7777",
+  "source_count": 14
+}

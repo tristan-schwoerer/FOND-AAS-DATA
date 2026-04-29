@@ -3,6 +3,10 @@
  (:objects
    initiallocation1 initiallocation2 initiallocation3 - locationparameter
    mim8_0001 - mim8_0001aas
+   mim8_0002 - mim8_0002aas
+   mim8_0003 - mim8_0003aas
+   mim8_0004 - mim8_0004aas
+   order_7523155a_5ba4_49b7_bfe6_cd75cc989c7a - order
  )
  (:init
               (operational planarshuttle1)
@@ -35,9 +39,15 @@
               (operational cytivacappingsystem)
               (free cytivacappingsystem)
               (step_ready mim8_0001 step_1_dispensing)
+              (step_ready mim8_0002 step_1_dispensing)
+              (step_ready mim8_0003 step_1_dispensing)
+              (step_ready mim8_0004 step_1_dispensing)
  )
  (:goal (and 
            (finished mim8_0001)
+           (finished mim8_0002)
+           (finished mim8_0003)
+           (finished mim8_0004)
            (free planarshuttle1)
            (free planarshuttle2)
            (free planarshuttle3)
@@ -48,6 +58,9 @@
            (free omroncamerasystem)
            (free cytivacappingsystem)
            (step_done mim8_0001 step_3_inspection)
+           (step_done mim8_0002 step_3_inspection)
+           (step_done mim8_0003 step_3_inspection)
+           (step_done mim8_0004 step_3_inspection)
         )
  )
 )
